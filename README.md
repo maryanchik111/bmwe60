@@ -1,15 +1,15 @@
 # Збір на BMW E60 530d
 
-Одна сторінка: Next.js 15 (App Router) + Tailwind + Firebase Firestore + LiqPay.
+Одна сторінка: Next.js 15 (App Router) + Tailwind + Firebase Firestore + monobank (Plata by mono).
 
 ## Запуск
 1. `npm install`
-2. `cp .env.example .env.local` і заповни (Firebase service account, ключі LiqPay, `NEXT_PUBLIC_SITE_URL`).
+2. `cp .env.example .env.local` і заповни (Firebase service account, `MONO_TOKEN`, `NEXT_PUBLIC_SITE_URL`).
 3. `npm run dev`
 
 ## Як працює оплата
-- `POST /api/donate` створює `donations/{orderId}` (status `pending`), рахує гривні за курсом НБУ й повертає підписану форму LiqPay.
-- LiqPay шле `POST /api/liqpay/callback` (server_url — потрібен публічний URL). Підпис перевіряється, у транзакції донат стає `paid`, а `stats/main.raisedUsd` збільшується (ідемпотентно).
+- `POST /api/donate` рахує гривні за курсом НБУ, створює інвойс monobank (`/invoice/create`, ccy 980), зберігає `donations/{orderId}` (status `pending`) і віддає `pageUrl` — клієнт редіректить туди.
+- Банк шле `POST /api/mono/webhook` (потрібен публічний URL). Статус інвойсу перевіряється повторним запитом до API банку; якщо `success` і сума збігається — у транзакції донат стає `paid`, а `stats/main.raisedUsd` росте (ідемпотентно).
 - Топ донатерів і стіна рахуються з оплачених донатів.
 
 ## Firestore

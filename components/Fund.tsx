@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Stats } from "@/lib/donations";
 
 const PRESETS = [5, 10, 25, 50, 100];
@@ -26,7 +26,6 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [thanks, setThanks] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const t = new URLSearchParams(location.search).get("thanks");
@@ -55,11 +54,7 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error);
-      const f = formRef.current!;
-      (f.elements.namedItem("data") as HTMLInputElement).value = j.data;
-      (f.elements.namedItem("signature") as HTMLInputElement).value = j.signature;
-      f.action = j.url;
-      f.submit();
+      location.href = j.url;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Помилка, спробуй ще раз");
       setBusy(null);
@@ -71,10 +66,6 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
 
   return (
     <main className="mx-auto max-w-5xl px-4 pb-24">
-      <form ref={formRef} method="POST" acceptCharset="utf-8" className="hidden">
-        <input name="data" /> <input name="signature" />
-      </form>
-
       <header className="pt-16 pb-10 text-center">
         <div className="mx-auto mb-5 flex w-fit gap-1">
           <span className="h-1.5 w-10 rounded bg-bmw-blue" />
@@ -127,7 +118,7 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
         <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 lg:col-span-3">
           <h2 className="text-2xl font-bold">Приєднатись</h2>
           <p className="mt-1 text-sm text-white/50">
-            Натисни суму — одразу перейдеш до оплати карткою, Apple/Google Pay (LiqPay).
+            Натисни суму — одразу перейдеш на сторінку оплати monobank (Plata by mono): картка, Apple/Google Pay. Оплата у гривнях.
           </p>
 
           <div className="mt-5 grid gap-3">

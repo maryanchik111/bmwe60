@@ -68,7 +68,7 @@ export async function getStats(): Promise<Stats> {
 }
 
 /** Ідемпотентно позначає донат оплаченим і збільшує прогрес. */
-export async function markPaid(orderId: string, paidUah: number) {
+export async function markPaid(orderId: string, invoiceId: string, paidUah: number) {
   const firestore = db();
   const ref = firestore.collection("donations").doc(orderId);
   await firestore.runTransaction(async (tx) => {
@@ -76,6 +76,7 @@ export async function markPaid(orderId: string, paidUah: number) {
     if (!snap.exists) throw new Error("unknown order");
     const d = snap.data()!;
     if (d.status === "paid") return;
+    if (d.invoiceId !== invoiceId) throw new Error("invoice mismatch");
     if (paidUah + 0.01 < d.amountUah) throw new Error("amount mismatch");
     tx.update(ref, { status: "paid", paidAt: FieldValue.serverTimestamp() });
     tx.set(

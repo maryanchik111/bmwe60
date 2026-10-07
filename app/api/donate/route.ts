@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "@/lib/firebase";
 import { usdToUah } from "@/lib/rate";
-import { buildCheckout } from "@/lib/liqpay";
+import { createInvoice } from "@/lib/mono";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +37,10 @@ export async function POST(req: Request) {
     const orderId = randomUUID();
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin).replace(/\/$/, "");
 
-    const checkout = buildCheckout({
+    const invoice = await createInvoice({
       orderId,
       amountUah,
-      description: `Донат на BMW E60 від ${name}`,
+      destination: `Донат на BMW E60 від ${name}`,
       siteUrl,
     });
 
@@ -51,11 +51,12 @@ export async function POST(req: Request) {
       amountUsd,
       amountUah,
       rate,
+      invoiceId: invoice.invoiceId,
       status: "pending",
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.json({ ...checkout, url: "https://www.liqpay.ua/api/3/checkout" });
+    return NextResponse.json({ url: invoice.pageUrl });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Не вдалося створити платіж" }, { status: 500 });
