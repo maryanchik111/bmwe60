@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { usdToUah } from "@/lib/rate";
 import { createInvoice } from "@/lib/mono";
 
 export const dynamic = "force-dynamic";
@@ -24,16 +23,14 @@ function cleanLink(v: unknown) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const amountUsd = Math.round(Number(body.amountUsd) * 100) / 100;
-    if (!(amountUsd >= 1 && amountUsd <= 5000)) {
-      return NextResponse.json({ error: "Сума має бути від $1 до $5000" }, { status: 400 });
+    const amountUah = Math.round(Number(body.amountUah) * 100) / 100;
+    if (!(amountUah >= 10 && amountUah <= 200000)) {
+      return NextResponse.json({ error: "Сума має бути від 10 до 200 000 ₴" }, { status: 400 });
     }
     const name = clean(body.name, 30) || "Анонім";
     const message = clean(body.message, 160);
     const link = message ? cleanLink(body.link) : "";
 
-    const rate = await usdToUah();
-    const amountUah = Math.ceil(amountUsd * rate);
     const orderId = randomUUID();
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin).replace(/\/$/, "");
 
@@ -48,9 +45,7 @@ export async function POST(req: Request) {
       name,
       message,
       link,
-      amountUsd,
       amountUah,
-      rate,
       invoiceId: invoice.invoiceId,
       status: "pending",
       createdAt: serverTimestamp(),

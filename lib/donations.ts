@@ -3,28 +3,28 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
-export const GOAL_USD = Number(process.env.NEXT_PUBLIC_GOAL_USD || 8000);
+export const GOAL_UAH = Number(process.env.NEXT_PUBLIC_GOAL_UAH || 330000);
 
-export type Donor = { name: string; totalUsd: number; count: number };
+export type Donor = { name: string; totalUah: number; count: number };
 export type Supporter = {
   id: string;
   name: string;
   message: string;
   link: string;
-  amountUsd: number;
+  amountUah: number;
   paidAt: number;
 };
 export type Stats = {
-  goalUsd: number;
-  raisedUsd: number;
+  goalUah: number;
+  raisedUah: number;
   donorsCount: number;
   top: Donor[];
   recent: Supporter[];
 };
 
 export const EMPTY_STATS: Stats = {
-  goalUsd: GOAL_USD,
-  raisedUsd: 0,
+  goalUah: GOAL_UAH,
+  raisedUah: 0,
   donorsCount: 0,
   top: [],
   recent: [],
@@ -44,7 +44,7 @@ export async function getStats(): Promise<Stats> {
       name: x.name,
       message: x.message || "",
       link: x.link || "",
-      amountUsd: x.amountUsd,
+      amountUah: x.amountUah,
       paidAt: x.paidAt?.toMillis?.() ?? 0,
     };
   });
@@ -53,18 +53,18 @@ export async function getStats(): Promise<Stats> {
   const byName = new Map<string, Donor>();
   for (const s of supporters) {
     const key = s.name.toLowerCase();
-    const cur = byName.get(key) ?? { name: s.name, totalUsd: 0, count: 0 };
-    cur.totalUsd += s.amountUsd;
+    const cur = byName.get(key) ?? { name: s.name, totalUah: 0, count: 0 };
+    cur.totalUah += s.amountUah;
     cur.count += 1;
     byName.set(key, cur);
   }
 
   const st = statsDoc.data();
   return {
-    goalUsd: GOAL_USD,
-    raisedUsd: st?.raisedUsd ?? 0,
+    goalUah: GOAL_UAH,
+    raisedUah: st?.raisedUah ?? 0,
     donorsCount: byName.size,
-    top: [...byName.values()].sort((a, b) => b.totalUsd - a.totalUsd).slice(0, 10),
+    top: [...byName.values()].sort((a, b) => b.totalUah - a.totalUah).slice(0, 10),
     recent: supporters.slice(0, 30),
   };
 }
@@ -81,6 +81,6 @@ export async function markPaid(orderId: string, invoiceId: string, paidUah: numb
     if (d.invoiceId !== invoiceId) throw new Error("invoice mismatch");
     if (paidUah + 0.01 < d.amountUah) throw new Error("amount mismatch");
     tx.update(ref, { status: "paid", paidAt: serverTimestamp() });
-    tx.set(doc(firestore, "stats", "main"), { raisedUsd: increment(d.amountUsd) }, { merge: true });
+    tx.set(doc(firestore, "stats", "main"), { raisedUah: increment(d.amountUah) }, { merge: true });
   });
 }

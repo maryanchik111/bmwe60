@@ -7,10 +7,9 @@ import {
 } from "lucide-react";
 import type { Stats } from "@/lib/donations";
 
-const PRESETS = [5, 10, 25, 50, 100];
-const MARQUEE = ["BMW E60", "530d", "3.0 дизель", "М57", "Ціль $8000", "Реклама для донатерів"];
+const PRESETS = [100, 250, 500, 1000, 2500];
+const MARQUEE = ["BMW E60", "530d", "3.0 дизель", "М57", "Ціль 330 000 ₴", "Реклама для донатерів"];
 
-const usd = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 const uah = (n: number) => `${Math.round(n).toLocaleString("uk-UA")} ₴`;
 
 function ago(ms: number) {
@@ -26,7 +25,7 @@ const card = "rounded-[28px] bg-white p-6 sm:p-8 shadow-[0_4px_0_0_#d9d8d4]";
 const field =
   "w-full rounded-2xl border-2 border-ink/10 bg-paper px-4 py-3 font-medium outline-none transition focus:border-brand placeholder:text-ink/35";
 
-export default function Fund({ initial, rate }: { initial: Stats; rate: number }) {
+export default function Fund({ initial }: { initial: Stats }) {
   const [stats, setStats] = useState(initial);
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
@@ -47,17 +46,17 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
     return () => clearInterval(id);
   }, []);
 
-  const pct = Math.min(100, (stats.raisedUsd / stats.goalUsd) * 100);
+  const pct = Math.min(100, (stats.raisedUah / stats.goalUah) * 100);
 
-  async function donate(amountUsd: number) {
+  async function donate(amountUah: number) {
     setError("");
-    if (!(amountUsd >= 1)) return setError("Мінімальна сума — $1");
-    setBusy(amountUsd);
+    if (!(amountUah >= 10)) return setError("Мінімальна сума — 10 ₴");
+    setBusy(amountUah);
     try {
       const res = await fetch("/api/donate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amountUsd, name, message, link }),
+        body: JSON.stringify({ amountUah, name, message, link }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error);
@@ -91,7 +90,7 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
             разом із вами
           </h1>
           <p className="mt-6 max-w-xl text-lg text-ink/70 sm:text-xl">
-            Шестициліндровий 530d — мрія, до якої лишилось зібрати {usd(stats.goalUsd)}. Кожен учасник
+            Шестициліндровий 530d — мрія, до якої лишилось зібрати {uah(stats.goalUah)}. Кожен учасник
             отримує рекламу свого повідомлення або посилання просто на цьому сайті.
           </p>
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -132,12 +131,11 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
         <section className={card}>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <div className="text-5xl font-black tracking-tight sm:text-6xl">{usd(stats.raisedUsd)}</div>
-              <div className="mt-1 font-semibold text-ink/50">{uah(stats.raisedUsd * rate)} зібрано</div>
+              <div className="text-5xl font-black tracking-tight sm:text-6xl">{uah(stats.raisedUah)}</div>
+              <div className="mt-1 font-semibold text-ink/50">зібрано</div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-extrabold">з {usd(stats.goalUsd)}</div>
-              <div className="font-semibold text-ink/50">{uah(stats.goalUsd * rate)}</div>
+              <div className="text-2xl font-extrabold">з {uah(stats.goalUah)}</div>
             </div>
           </div>
           <div className="mt-6 h-6 overflow-hidden rounded-full bg-paper">
@@ -149,9 +147,8 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
             <span className="flex items-center gap-1.5">
               <Users size={18} /> {stats.donorsCount} {stats.donorsCount === 1 ? "учасник" : "учасників"}
             </span>
-            <span>Лишилось {usd(Math.max(0, stats.goalUsd - stats.raisedUsd))}</span>
+            <span>Лишилось {uah(Math.max(0, stats.goalUah - stats.raisedUah))}</span>
           </div>
-          <p className="mt-2 text-xs text-ink/35">Курс НБУ: 1 $ = {rate.toFixed(2)} ₴</p>
         </section>
 
         <div className="grid gap-6 lg:grid-cols-5">
@@ -160,7 +157,7 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
               <Heart className="fill-brand text-brand" /> Приєднатись
             </h2>
             <p className="mt-2 text-ink/60">
-              Натисни суму — одразу відкриється оплата monobank (картка, Apple Pay, Google Pay) у гривнях.
+              Натисни суму — одразу відкриється оплата monobank (картка, Apple Pay, Google Pay).
             </p>
 
             <div className="mt-5 space-y-3">
@@ -179,16 +176,15 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
               {PRESETS.map((p) => (
                 <button key={p} disabled={busy !== null} onClick={() => donate(p)}
                   className="rounded-2xl bg-ink py-3 font-extrabold text-white shadow-[0_4px_0_0_#1c4fe4] transition active:translate-y-1 active:shadow-none disabled:opacity-50">
-                  {busy === p ? "…" : usd(p)}
-                  <div className="text-xs font-medium text-white/60">{uah(p * rate)}</div>
+                  {busy === p ? "…" : uah(p)}
                 </button>
               ))}
             </div>
 
             <div className="mt-4 flex gap-3">
               <div className="relative flex-1">
-                <span className="absolute left-4 top-3.5 font-bold text-ink/40">$</span>
-                <input className={`${field} pl-8`} type="number" min={1} max={5000}
+                <span className="absolute left-4 top-3.5 font-bold text-ink/40">₴</span>
+                <input className={`${field} pl-8`} type="number" min={10} max={200000}
                   placeholder="Своя сума" value={custom} onChange={(e) => setCustom(e.target.value)} />
               </div>
               <button disabled={busy !== null} onClick={() => donate(Number(custom))}
@@ -196,9 +192,6 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
                 Донат
               </button>
             </div>
-            {Number(custom) >= 1 && (
-              <p className="mt-2 text-sm font-semibold text-ink/50">≈ {uah(Number(custom) * rate)}</p>
-            )}
             {error && <p className="mt-3 font-semibold text-red-600">{error}</p>}
             <p className="mt-4 flex gap-2 text-xs text-ink/40">
               <ShieldCheck size={16} className="shrink-0" />
@@ -222,7 +215,7 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
                     )}
                   </span>
                   <span className="flex-1 truncate font-bold">{d.name}</span>
-                  <span className="font-extrabold text-brand">{usd(d.totalUsd)}</span>
+                  <span className="font-extrabold text-brand">{uah(d.totalUah)}</span>
                 </li>
               ))}
             </ol>
@@ -240,7 +233,7 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
                 <div className="flex items-center justify-between gap-2">
                   <b className="truncate">{s.name}</b>
                   <span className="shrink-0 rounded-full bg-brand px-3 py-0.5 text-sm font-bold text-white">
-                    {usd(s.amountUsd)}
+                    {uah(s.amountUah)}
                   </span>
                 </div>
                 {s.message &&
