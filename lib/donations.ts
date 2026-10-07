@@ -1,4 +1,6 @@
-import { FieldValue } from "firebase-admin/firestore";
+import {
+  collection, doc, getDoc, getDocs, increment, limit, query, runTransaction, serverTimestamp, where,
+} from "firebase/firestore";
 import { db } from "./firebase";
 
 export const GOAL_USD = Number(process.env.NEXT_PUBLIC_GOAL_USD || 8000);
@@ -31,8 +33,8 @@ export const EMPTY_STATS: Stats = {
 export async function getStats(): Promise<Stats> {
   const firestore = db();
   const [statsDoc, paid] = await Promise.all([
-    firestore.doc("stats/main").get(),
-    firestore.collection("donations").where("status", "==", "paid").limit(2000).get(),
+    getDoc(doc(firestore, "stats", "main")),
+    getDocs(query(collection(firestore, "donations"), where("status", "==", "paid"), limit(2000))),
   ]);
 
   const supporters: Supporter[] = paid.docs.map((d) => {
@@ -70,19 +72,15 @@ export async function getStats(): Promise<Stats> {
 /** Ідемпотентно позначає донат оплаченим і збільшує прогрес. */
 export async function markPaid(orderId: string, invoiceId: string, paidUah: number) {
   const firestore = db();
-  const ref = firestore.collection("donations").doc(orderId);
-  await firestore.runTransaction(async (tx) => {
+  const ref = doc(firestore, "donations", orderId);
+  await runTransaction(firestore, async (tx) => {
     const snap = await tx.get(ref);
-    if (!snap.exists) throw new Error("unknown order");
-    const d = snap.data()!;
+    if (!snap.exists()) throw new Error("unknown order");
+    const d = snap.data();
     if (d.status === "paid") return;
     if (d.invoiceId !== invoiceId) throw new Error("invoice mismatch");
     if (paidUah + 0.01 < d.amountUah) throw new Error("amount mismatch");
-    tx.update(ref, { status: "paid", paidAt: FieldValue.serverTimestamp() });
-    tx.set(
-      firestore.doc("stats/main"),
-      { raisedUsd: FieldValue.increment(d.amountUsd) },
-      { merge: true }
-    );
+    tx.update(ref, { status: "paid", paidAt: serverTimestamp() });
+    tx.set(doc(firestore, "stats", "main"), { raisedUsd: increment(d.amountUsd) }, { merge: true });
   });
 }

@@ -4,7 +4,7 @@
 
 ## Запуск
 1. `npm install`
-2. `cp .env.example .env.local` і заповни (Firebase service account, `MONO_TOKEN`, `NEXT_PUBLIC_SITE_URL`).
+2. `cp .env.example .env.local` і заповни (`MONO_TOKEN`, `NEXT_PUBLIC_SITE_URL`).
 3. `npm run dev`
 
 ## Як працює оплата
@@ -13,5 +13,5 @@
 - Топ донатерів і стіна рахуються з оплачених донатів.
 
 ## Firestore
-Колекції: `donations`, `stats/main`. Доступ лише через сервер (Admin SDK) — у rules постав `allow read, write: if false;`.
+Колекції: `donations`, `stats/main`. Сервер ходить у Firestore через web SDK, тому в rules має бути `allow read, write: if true;` (підходить лише для жартівливого проєкту — будь-хто зможе писати в базу).
 Щоб додати вже зібрану суму вручну — задай `raisedUsd` у `stats/main`.

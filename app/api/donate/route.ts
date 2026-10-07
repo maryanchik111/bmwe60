@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { FieldValue } from "firebase-admin/firestore";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { usdToUah } from "@/lib/rate";
 import { createInvoice } from "@/lib/mono";
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       siteUrl,
     });
 
-    await db().collection("donations").doc(orderId).set({
+    await setDoc(doc(db(), "donations", orderId), {
       name,
       message,
       link,
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       rate,
       invoiceId: invoice.invoiceId,
       status: "pending",
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: serverTimestamp(),
     });
 
     return NextResponse.json({ url: invoice.pageUrl });
