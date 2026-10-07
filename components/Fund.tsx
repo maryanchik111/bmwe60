@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  ArrowRight, Car, Check, CircleCheck, ExternalLink, Heart, Megaphone,
+  Medal, ShieldCheck, Trophy, Users, Zap,
+} from "lucide-react";
 import type { Stats } from "@/lib/donations";
 
 const PRESETS = [5, 10, 25, 50, 100];
+const MARQUEE = ["BMW E60", "530d", "3.0 дизель", "М57", "Ціль $8000", "Реклама для донатерів"];
 
 const usd = (n: number) => `$${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 const uah = (n: number) => `${Math.round(n).toLocaleString("uk-UA")} ₴`;
@@ -17,6 +22,10 @@ function ago(ms: number) {
   return `${Math.floor(h / 24)} дн тому`;
 }
 
+const card = "rounded-[28px] bg-white p-6 sm:p-8 shadow-[0_4px_0_0_#d9d8d4]";
+const field =
+  "w-full rounded-2xl border-2 border-ink/10 bg-paper px-4 py-3 font-medium outline-none transition focus:border-brand placeholder:text-ink/35";
+
 export default function Fund({ initial, rate }: { initial: Stats; rate: number }) {
   const [stats, setStats] = useState(initial);
   const [name, setName] = useState("");
@@ -28,13 +37,11 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
   const [thanks, setThanks] = useState(false);
 
   useEffect(() => {
-    const t = new URLSearchParams(location.search).get("thanks");
-    if (t) {
+    if (new URLSearchParams(location.search).get("thanks")) {
       setThanks(true);
       history.replaceState(null, "", "/");
     }
-    const load = () =>
-      fetch("/api/stats").then((r) => r.json()).then(setStats).catch(() => {});
+    const load = () => fetch("/api/stats").then((r) => r.json()).then(setStats).catch(() => {});
     load();
     const id = setInterval(load, 15000);
     return () => clearInterval(id);
@@ -61,156 +68,200 @@ export default function Fund({ initial, rate }: { initial: Stats; rate: number }
     }
   }
 
-  const input =
-    "w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 outline-none focus:border-bmw-light placeholder:text-white/30";
+  const scrollToDonate = () => document.getElementById("donate")?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-24">
-      <header className="pt-16 pb-10 text-center">
-        <div className="mx-auto mb-5 flex w-fit gap-1">
-          <span className="h-1.5 w-10 rounded bg-bmw-blue" />
-          <span className="h-1.5 w-10 rounded bg-indigo-800" />
-          <span className="h-1.5 w-10 rounded bg-red-600" />
-        </div>
-        <h1 className="text-4xl font-black tracking-tight sm:text-6xl">
-          Збираю на <span className="text-bmw-light">BMW E60</span> 3.0d
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl text-white/60">
-          Шестициліндровий дизель, 530d. Допоможи мені її купити — а я покажу на сайті твоє
-          повідомлення або посилання всім, хто сюди зайде. 🚗💨
-        </p>
-      </header>
-
-      {thanks && (
-        <div className="mb-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-center">
-          Дякую за підтримку! 🙌 Після підтвердження платежу ти з’явишся в списку нижче.
-        </div>
-      )}
-
-      {/* Progress */}
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <div className="text-5xl font-black">{usd(stats.raisedUsd)}</div>
-            <div className="text-white/50">{uah(stats.raisedUsd * rate)} зібрано</div>
+    <main className="overflow-x-hidden pb-20">
+      <div className="mx-auto max-w-5xl px-4">
+        <nav className="flex items-center justify-between pt-8">
+          <div className="text-2xl font-black tracking-tight">
+            bmw e60<span className="text-ink/40"> .fund</span>
           </div>
-          <div className="text-right">
-            <div className="text-xl font-bold">з {usd(stats.goalUsd)}</div>
-            <div className="text-white/50">{uah(stats.goalUsd * rate)}</div>
-          </div>
-        </div>
-        <div className="mt-5 h-5 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-bmw-blue to-bmw-light transition-all duration-1000"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <div className="mt-3 flex justify-between text-sm text-white/60">
-          <span>{pct.toFixed(1)}%</span>
-          <span>👥 {stats.donorsCount} {stats.donorsCount === 1 ? "учасник" : "учасників"}</span>
-          <span>Лишилось {usd(Math.max(0, stats.goalUsd - stats.raisedUsd))}</span>
-        </div>
-        <p className="mt-2 text-xs text-white/30">Курс НБУ: 1 $ = {rate.toFixed(2)} ₴</p>
-      </section>
+          <button onClick={scrollToDonate}
+            className="rounded-full bg-ink px-6 py-3 font-bold text-white transition active:scale-95">
+            Підтримати
+          </button>
+        </nav>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-5">
-        {/* Donate */}
-        <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 lg:col-span-3">
-          <h2 className="text-2xl font-bold">Приєднатись</h2>
-          <p className="mt-1 text-sm text-white/50">
-            Натисни суму — одразу перейдеш на сторінку оплати monobank (Plata by mono): картка, Apple/Google Pay. Оплата у гривнях.
+        <header className="pb-10 pt-14 sm:pt-20">
+          <h1 className="text-5xl font-black leading-[1.05] tracking-tight sm:text-7xl">
+            Збираю на BMW E60
+            <br />
+            <span className="inline-block -rotate-1 rounded-xl bg-brand px-3 text-white">3.0 дизель</span>{" "}
+            разом із вами
+          </h1>
+          <p className="mt-6 max-w-xl text-lg text-ink/70 sm:text-xl">
+            Шестициліндровий 530d — мрія, до якої лишилось зібрати {usd(stats.goalUsd)}. Кожен учасник
+            отримує рекламу свого повідомлення або посилання просто на цьому сайті.
           </p>
-
-          <div className="mt-5 grid gap-3">
-            <input className={input} placeholder="Твій нік (необов’язково)" maxLength={30}
-              value={name} onChange={(e) => setName(e.target.value)} />
-            <textarea className={input} rows={2} maxLength={160}
-              placeholder="Твоя реклама / повідомлення — з’явиться на сайті (до 160 символів)"
-              value={message} onChange={(e) => setMessage(e.target.value)} />
-            {message && (
-              <input className={input} placeholder="Посилання (сайт, Instagram, Telegram…)"
-                value={link} onChange={(e) => setLink(e.target.value)} />
-            )}
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
-            {PRESETS.map((p) => (
-              <button key={p} disabled={busy !== null} onClick={() => donate(p)}
-                className="rounded-xl bg-bmw-blue py-3 text-center font-bold transition hover:bg-bmw-light active:scale-95 disabled:opacity-50">
-                {busy === p ? "…" : usd(p)}
-                <div className="text-xs font-normal text-white/70">{uah(p * rate)}</div>
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-3 flex gap-3">
-            <div className="relative flex-1">
-              <span className="absolute left-4 top-3.5 text-white/40">$</span>
-              <input className={`${input} pl-8`} type="number" min={1} max={5000} placeholder="Своя сума"
-                value={custom} onChange={(e) => setCustom(e.target.value)} />
-            </div>
-            <button disabled={busy !== null} onClick={() => donate(Number(custom))}
-              className="rounded-xl bg-white px-6 font-bold text-black transition hover:bg-white/80 disabled:opacity-50">
-              Донат
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+            <button onClick={scrollToDonate}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-8 py-4 text-lg font-bold text-white shadow-[0_5px_0_0_#1c4fe4] transition active:translate-y-1 active:shadow-none">
+              Долучитись <ArrowRight size={20} />
             </button>
+            <a href="#wall"
+              className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-lg font-bold shadow-[0_5px_0_0_#d9d8d4] transition active:translate-y-1 active:shadow-none">
+              Стіна підтримки
+            </a>
           </div>
-          {Number(custom) >= 1 && (
-            <p className="mt-2 text-sm text-white/50">≈ {uah(Number(custom) * rate)}</p>
-          )}
-          {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
-          <p className="mt-4 text-xs text-white/30">
-            Повідомлення і нік видно всім. Посилання відкриваються з rel=nofollow. Я залишаю за собою
-            право прибрати спам.
-          </p>
-        </section>
-
-        {/* Top */}
-        <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-6 lg:col-span-2">
-          <h2 className="text-2xl font-bold">🏆 Топ донатерів</h2>
-          <ol className="mt-4 space-y-2">
-            {stats.top.length === 0 && <li className="text-white/40">Будь першим!</li>}
-            {stats.top.map((d, i) => (
-              <li key={d.name} className="flex items-center gap-3 rounded-xl bg-white/5 px-3 py-2">
-                <span className="w-6 text-center">{["🥇", "🥈", "🥉"][i] ?? i + 1}</span>
-                <span className="flex-1 truncate font-medium">{d.name}</span>
-                <span className="font-bold text-bmw-light">{usd(d.totalUsd)}</span>
-              </li>
+          <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-ink/60">
+            {["Оплата карткою у гривнях", "Реклама для кожного донатера", "Прозорий прогрес"].map((t) => (
+              <li key={t} className="flex items-center gap-1.5"><Check size={18} /> {t}</li>
             ))}
-          </ol>
-        </section>
+          </ul>
+        </header>
       </div>
 
-      {/* Wall */}
-      <section className="mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
-        <h2 className="text-2xl font-bold">📢 Стіна підтримки</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {stats.recent.length === 0 && <p className="text-white/40">Поки порожньо.</p>}
-          {stats.recent.map((s) => (
-            <article key={s.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <b className="truncate">{s.name}</b>
-                <span className="shrink-0 rounded-full bg-bmw-blue/20 px-2 py-0.5 text-sm text-bmw-light">
-                  {usd(s.amountUsd)}
-                </span>
-              </div>
-              {s.message &&
-                (s.link ? (
-                  <a href={s.link} target="_blank" rel="nofollow sponsored noopener noreferrer"
-                    className="mt-2 block break-words text-bmw-light underline-offset-2 hover:underline">
-                    {s.message} ↗
-                  </a>
-                ) : (
-                  <p className="mt-2 break-words text-white/80">{s.message}</p>
-                ))}
-              <div className="mt-2 text-xs text-white/30">{ago(s.paidAt)}</div>
-            </article>
+      <div className="my-6 -rotate-1 overflow-hidden bg-ink py-5 text-white">
+        <div className="marquee flex w-max gap-10 whitespace-nowrap text-2xl font-extrabold">
+          {[...MARQUEE, ...MARQUEE, ...MARQUEE, ...MARQUEE].map((t, i) => (
+            <span key={i} className="flex items-center gap-10">
+              {t} <Zap size={18} className="fill-brand text-brand" />
+            </span>
           ))}
         </div>
-      </section>
+      </div>
 
-      <footer className="mt-10 text-center text-sm text-white/30">
-        Зроблено з любов’ю до баварського дизеля · BMW E60 530d
-      </footer>
+      <div className="mx-auto max-w-5xl space-y-6 px-4 pt-6">
+        {thanks && (
+          <div className="flex items-center gap-3 rounded-2xl bg-brand p-4 font-semibold text-white">
+            <CircleCheck /> Дякую за підтримку! Після підтвердження платежу ти з’явишся у списку нижче.
+          </div>
+        )}
+
+        <section className={card}>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <div className="text-5xl font-black tracking-tight sm:text-6xl">{usd(stats.raisedUsd)}</div>
+              <div className="mt-1 font-semibold text-ink/50">{uah(stats.raisedUsd * rate)} зібрано</div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-extrabold">з {usd(stats.goalUsd)}</div>
+              <div className="font-semibold text-ink/50">{uah(stats.goalUsd * rate)}</div>
+            </div>
+          </div>
+          <div className="mt-6 h-6 overflow-hidden rounded-full bg-paper">
+            <div className="h-full rounded-full bg-brand transition-all duration-1000"
+              style={{ width: `${Math.max(pct, 2)}%` }} />
+          </div>
+          <div className="mt-4 flex flex-wrap justify-between gap-2 font-semibold text-ink/60">
+            <span>{pct.toFixed(1)}%</span>
+            <span className="flex items-center gap-1.5">
+              <Users size={18} /> {stats.donorsCount} {stats.donorsCount === 1 ? "учасник" : "учасників"}
+            </span>
+            <span>Лишилось {usd(Math.max(0, stats.goalUsd - stats.raisedUsd))}</span>
+          </div>
+          <p className="mt-2 text-xs text-ink/35">Курс НБУ: 1 $ = {rate.toFixed(2)} ₴</p>
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-5">
+          <section id="donate" className={`${card} scroll-mt-6 lg:col-span-3`}>
+            <h2 className="flex items-center gap-2 text-3xl font-black tracking-tight">
+              <Heart className="fill-brand text-brand" /> Приєднатись
+            </h2>
+            <p className="mt-2 text-ink/60">
+              Натисни суму — одразу відкриється оплата monobank (картка, Apple Pay, Google Pay) у гривнях.
+            </p>
+
+            <div className="mt-5 space-y-3">
+              <input className={field} placeholder="Твій нік (необов’язково)" maxLength={30}
+                value={name} onChange={(e) => setName(e.target.value)} />
+              <textarea className={field} rows={2} maxLength={160}
+                placeholder="Твоя реклама / повідомлення для стіни (до 160 символів)"
+                value={message} onChange={(e) => setMessage(e.target.value)} />
+              {message && (
+                <input className={field} placeholder="Посилання (сайт, Instagram, Telegram…)"
+                  value={link} onChange={(e) => setLink(e.target.value)} />
+              )}
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {PRESETS.map((p) => (
+                <button key={p} disabled={busy !== null} onClick={() => donate(p)}
+                  className="rounded-2xl bg-ink py-3 font-extrabold text-white shadow-[0_4px_0_0_#1c4fe4] transition active:translate-y-1 active:shadow-none disabled:opacity-50">
+                  {busy === p ? "…" : usd(p)}
+                  <div className="text-xs font-medium text-white/60">{uah(p * rate)}</div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 flex gap-3">
+              <div className="relative flex-1">
+                <span className="absolute left-4 top-3.5 font-bold text-ink/40">$</span>
+                <input className={`${field} pl-8`} type="number" min={1} max={5000}
+                  placeholder="Своя сума" value={custom} onChange={(e) => setCustom(e.target.value)} />
+              </div>
+              <button disabled={busy !== null} onClick={() => donate(Number(custom))}
+                className="rounded-2xl bg-brand px-6 font-bold text-white shadow-[0_4px_0_0_#12318f] transition active:translate-y-1 active:shadow-none disabled:opacity-50">
+                Донат
+              </button>
+            </div>
+            {Number(custom) >= 1 && (
+              <p className="mt-2 text-sm font-semibold text-ink/50">≈ {uah(Number(custom) * rate)}</p>
+            )}
+            {error && <p className="mt-3 font-semibold text-red-600">{error}</p>}
+            <p className="mt-4 flex gap-2 text-xs text-ink/40">
+              <ShieldCheck size={16} className="shrink-0" />
+              Нік і повідомлення видно всім. Посилання з rel=nofollow. Спам я прибираю.
+            </p>
+          </section>
+
+          <section className={`${card} lg:col-span-2`}>
+            <h2 className="flex items-center gap-2 text-3xl font-black tracking-tight">
+              <Trophy className="text-brand" /> Топ донатерів
+            </h2>
+            <ol className="mt-5 space-y-2">
+              {stats.top.length === 0 && <li className="font-medium text-ink/40">Будь першим!</li>}
+              {stats.top.map((d, i) => (
+                <li key={d.name} className="flex items-center gap-3 rounded-2xl bg-paper px-3 py-2.5">
+                  <span className="flex w-7 justify-center font-extrabold text-ink/40">
+                    {i < 3 ? (
+                      <Medal size={22} className={["text-yellow-500", "text-slate-400", "text-amber-700"][i]} />
+                    ) : (
+                      i + 1
+                    )}
+                  </span>
+                  <span className="flex-1 truncate font-bold">{d.name}</span>
+                  <span className="font-extrabold text-brand">{usd(d.totalUsd)}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+
+        <section id="wall" className={`${card} scroll-mt-6`}>
+          <h2 className="flex items-center gap-2 text-3xl font-black tracking-tight">
+            <Megaphone className="text-brand" /> Стіна підтримки
+          </h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {stats.recent.length === 0 && <p className="font-medium text-ink/40">Поки порожньо.</p>}
+            {stats.recent.map((s) => (
+              <article key={s.id} className="rounded-2xl bg-paper p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <b className="truncate">{s.name}</b>
+                  <span className="shrink-0 rounded-full bg-brand px-3 py-0.5 text-sm font-bold text-white">
+                    {usd(s.amountUsd)}
+                  </span>
+                </div>
+                {s.message &&
+                  (s.link ? (
+                    <a href={s.link} target="_blank" rel="nofollow sponsored noopener noreferrer"
+                      className="mt-2 inline-flex items-start gap-1.5 break-words font-semibold text-brand hover:underline">
+                      {s.message} <ExternalLink size={16} className="mt-1 shrink-0" />
+                    </a>
+                  ) : (
+                    <p className="mt-2 break-words font-medium text-ink/80">{s.message}</p>
+                  ))}
+                <div className="mt-2 text-xs font-medium text-ink/35">{ago(s.paidAt)}</div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <footer className="flex items-center justify-center gap-2 pt-6 text-sm font-medium text-ink/40">
+          <Car size={18} /> Зроблено з любові до баварського дизеля
+        </footer>
+      </div>
     </main>
   );
 }

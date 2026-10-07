@@ -4,9 +4,8 @@ const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
-      colors: {
-        bmw: { blue: "#1c69d4", light: "#4d9bff" },
-      },
+      colors: { ink: "#0f0f0f", brand: "#1c4fe4", paper: "#f3f2ef" },
+      fontFamily: { sans: ["var(--font-onest)", "system-ui", "sans-serif"] },
     },
   },
   plugins: [],

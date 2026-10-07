@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 body {
-  background: #07090d;
-  color: #e8ecf2;
+  background: #f3f2ef;
+  color: #0f0f0f;
 }
+
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+.marquee { animation: marquee 25s linear infinite; }

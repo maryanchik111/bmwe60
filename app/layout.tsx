@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { Onest } from "next/font/google";
 import "./globals.css";
+
+const onest = Onest({ subsets: ["latin", "cyrillic"], variable: "--font-onest" });
 
 export const metadata: Metadata = {
   title: "Збір на BMW E60 530d — допоможи з мрією",
@@ -9,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="uk">
-      <body className="min-h-screen antialiased">{children}</body>
+    <html lang="uk" className={onest.variable}>
+      <body className="min-h-screen font-sans antialiased">{children}</body>
     </html>
   );
 }
