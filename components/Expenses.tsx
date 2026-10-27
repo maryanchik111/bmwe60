@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft, Bed, Car, Crown, Gamepad2, ShoppingBag, Trash2, Utensils, Wallet, Plus, Shapes,
+  ArrowLeft, ArrowRight, Bed, Car, Crown, Gamepad2, ShoppingBag, Trash2, Utensils, Wallet, Plus, Shapes,
 } from "lucide-react";
 import {
   CATEGORIES, CURRENCIES, PEOPLE, fromUah, toUah,
@@ -67,7 +67,20 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
       days.set(k, row);
     }
     const timeline = [...days.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-14);
-    return { total, byPerson, byCat, timeline, share: total / PEOPLE.length };
+    const share = total / PEOPLE.length;
+    // мінімальний набір переказів: найбільший боржник віддає найбільшому кредитору
+    const debtors = byPerson.map((p) => ({ name: p.name, v: share - p.uah })).filter((x) => x.v > 1).sort((a, b) => b.v - a.v);
+    const creditors = byPerson.map((p) => ({ name: p.name, v: p.uah - share })).filter((x) => x.v > 1).sort((a, b) => b.v - a.v);
+    const transfers: { from: Person; to: Person; uah: number }[] = [];
+    for (let i = 0, j = 0; i < debtors.length && j < creditors.length; ) {
+      const pay = Math.min(debtors[i].v, creditors[j].v);
+      if (pay > 1) transfers.push({ from: debtors[i].name, to: creditors[j].name, uah: pay });
+      debtors[i].v -= pay;
+      creditors[j].v -= pay;
+      if (debtors[i].v <= 1) i++;
+      if (creditors[j].v <= 1) j++;
+    }
+    return { total, byPerson, byCat, timeline, share, transfers };
   }, [items]);
 
   const top = stats.byPerson.reduce((a, b) => (b.uah > a.uah ? b : a), stats.byPerson[0]);
@@ -262,6 +275,20 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
                 })}
               </ul>
               <p className="mt-3 text-xs text-ink/40">Плюс — комусь мають повернути, мінус — треба доплатити.</p>
+              <h3 className="mt-6 text-lg font-black tracking-tight">Хто кому винен</h3>
+              <ul className="mt-3 space-y-2">
+                {stats.transfers.length === 0 && (
+                  <li className="font-medium text-ink/40">Усі в розрахунку.</li>
+                )}
+                {stats.transfers.map((t) => (
+                  <li key={t.from + t.to} className="flex flex-wrap items-center gap-2 rounded-2xl bg-paper px-4 py-3 font-bold">
+                    <span style={{ color: COLORS[t.from] }}>{t.from}</span>
+                    <ArrowRight size={16} className="text-ink/40" />
+                    <span style={{ color: COLORS[t.to] }}>{t.to}</span>
+                    <span className="ml-auto text-lg font-extrabold">{money(t.uah)}</span>
+                  </li>
+                ))}
+              </ul>
             </section>
 
             <section className={card}>
