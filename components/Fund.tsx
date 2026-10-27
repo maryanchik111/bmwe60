@@ -252,7 +252,8 @@ export default function Fund({ initial }: { initial: Stats }) {
         </section>
 
         <footer className="flex items-center justify-center gap-2 pt-6 text-sm font-medium text-ink/40">
-          <Car size={18} /> Зроблено з любові до баварського дизеля
+          <Car size={18} /> Зроблено з любові до баварського дизеля ·{" "}
+          <a href="/expenses" className="underline underline-offset-2 hover:text-ink">Витрати поїздки</a>
         </footer>
       </div>
     </main>
