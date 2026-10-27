@@ -68,17 +68,16 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
     }
     const timeline = [...days.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-14);
     const share = total / PEOPLE.length;
-    // мінімальний набір переказів: найбільший боржник віддає найбільшому кредитору
-    const debtors = byPerson.map((p) => ({ name: p.name, v: share - p.uah })).filter((x) => x.v > 1).sort((a, b) => b.v - a.v);
-    const creditors = byPerson.map((p) => ({ name: p.name, v: p.uah - share })).filter((x) => x.v > 1).sort((a, b) => b.v - a.v);
+    // кожен боржник ділить свій борг між кредиторами пропорційно до їхньої переплати
+    const debtors = byPerson.map((p) => ({ name: p.name, v: share - p.uah })).filter((x) => x.v > 1);
+    const creditors = byPerson.map((p) => ({ name: p.name, v: p.uah - share })).filter((x) => x.v > 1);
+    const credit = creditors.reduce((s, c) => s + c.v, 0);
     const transfers: { from: Person; to: Person; uah: number }[] = [];
-    for (let i = 0, j = 0; i < debtors.length && j < creditors.length; ) {
-      const pay = Math.min(debtors[i].v, creditors[j].v);
-      if (pay > 1) transfers.push({ from: debtors[i].name, to: creditors[j].name, uah: pay });
-      debtors[i].v -= pay;
-      creditors[j].v -= pay;
-      if (debtors[i].v <= 1) i++;
-      if (creditors[j].v <= 1) j++;
+    for (const d of debtors.sort((a, b) => b.v - a.v)) {
+      for (const c of creditors.sort((a, b) => b.v - a.v)) {
+        const uah = (d.v * c.v) / credit;
+        if (uah > 1) transfers.push({ from: d.name, to: c.name, uah });
+      }
     }
     return { total, byPerson, byCat, timeline, share, transfers };
   }, [items]);
