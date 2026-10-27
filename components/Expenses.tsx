@@ -68,18 +68,16 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
     }
     const timeline = [...days.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-14);
     const share = total / PEOPLE.length;
-    // кожен боржник ділить свій борг між кредиторами пропорційно до їхньої переплати
-    const debtors = byPerson.map((p) => ({ name: p.name, v: share - p.uah })).filter((x) => x.v > 1);
-    const creditors = byPerson.map((p) => ({ name: p.name, v: p.uah - share })).filter((x) => x.v > 1);
-    const credit = creditors.reduce((s, c) => s + c.v, 0);
-    const transfers: { from: Person; to: Person; uah: number }[] = [];
-    for (const d of debtors.sort((a, b) => b.v - a.v)) {
-      for (const c of creditors.sort((a, b) => b.v - a.v)) {
-        const uah = (d.v * c.v) / credit;
-        if (uah > 1) transfers.push({ from: d.name, to: c.name, uah });
-      }
-    }
-    return { total, byPerson, byCat, timeline, share, transfers };
+    // кожен платник окремо: решта винна йому по 1/N від його витрат (без взаємозаліку)
+    const owed = byPerson
+      .filter((p) => p.uah > 0)
+      .sort((a, b) => b.uah - a.uah)
+      .map((p) => ({ payer: p.name, spent: p.uah, each: p.uah / PEOPLE.length, debtors: PEOPLE.filter((n) => n !== p.name) }));
+    const totalOwed = PEOPLE.map((n) => ({
+      name: n,
+      uah: owed.filter((o) => o.payer !== n).reduce((s, o) => s + o.each, 0),
+    }));
+    return { total, byPerson, byCat, timeline, share, owed, totalOwed };
   }, [items]);
 
   const top = stats.byPerson.reduce((a, b) => (b.uah > a.uah ? b : a), stats.byPerson[0]);
@@ -257,34 +255,38 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
           <div className="space-y-6">
             <section className={card}>
               <h2 className="flex items-center gap-2 text-2xl font-black tracking-tight">
-                <Wallet className="text-brand" /> Баланс
+                <Wallet className="text-brand" /> Хто кому винен
               </h2>
-              <p className="mt-1 text-sm text-ink/50">Якщо ділити порівну ({money(stats.share)} на людину)</p>
-              <ul className="mt-4 space-y-2">
-                {stats.byPerson.map((p) => {
-                  const diff = p.uah - stats.share;
-                  return (
-                    <li key={p.name} className="flex items-center justify-between rounded-2xl bg-paper px-4 py-2.5 font-bold">
-                      <span>{p.name}</span>
-                      <span className={diff >= 0 ? "text-emerald-600" : "text-red-500"}>
-                        {diff >= 0 ? "+" : "−"}{money(Math.abs(diff))}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-              <p className="mt-3 text-xs text-ink/40">Плюс — комусь мають повернути, мінус — треба доплатити.</p>
-              <h3 className="mt-6 text-lg font-black tracking-tight">Хто кому винен</h3>
+              <p className="mt-1 text-sm text-ink/50">
+                Кожна витрата ділиться на {PEOPLE.length}. Кожен платник отримує борг окремо, без взаємозаліків.
+              </p>
+              <div className="mt-4 space-y-3">
+                {stats.owed.length === 0 && <p className="font-medium text-ink/40">Поки нікому нічого не винні.</p>}
+                {stats.owed.map((o) => (
+                  <div key={o.payer} className="rounded-2xl bg-paper p-4">
+                    <div className="flex items-center justify-between gap-2 font-extrabold">
+                      <span style={{ color: COLORS[o.payer] }}>{o.payer}</span>
+                      <span className="text-sm font-semibold text-ink/50">витратив {money(o.spent)}</span>
+                    </div>
+                    <ul className="mt-2 space-y-1.5">
+                      {o.debtors.map((d) => (
+                        <li key={d} className="flex items-center gap-2 font-bold">
+                          <span style={{ color: COLORS[d] }}>{d}</span>
+                          <ArrowRight size={14} className="text-ink/30" />
+                          <span className="text-ink/50">{o.payer}</span>
+                          <span className="ml-auto font-extrabold">{money(o.each)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              <h3 className="mt-6 text-lg font-black tracking-tight">Скільки кожен винен всього</h3>
               <ul className="mt-3 space-y-2">
-                {stats.transfers.length === 0 && (
-                  <li className="font-medium text-ink/40">Усі в розрахунку.</li>
-                )}
-                {stats.transfers.map((t) => (
-                  <li key={t.from + t.to} className="flex flex-wrap items-center gap-2 rounded-2xl bg-paper px-4 py-3 font-bold">
-                    <span style={{ color: COLORS[t.from] }}>{t.from}</span>
-                    <ArrowRight size={16} className="text-ink/40" />
-                    <span style={{ color: COLORS[t.to] }}>{t.to}</span>
-                    <span className="ml-auto text-lg font-extrabold">{money(t.uah)}</span>
+                {stats.totalOwed.map((t) => (
+                  <li key={t.name} className="flex items-center justify-between rounded-2xl bg-paper px-4 py-2.5 font-bold">
+                    <span style={{ color: COLORS[t.name] }}>{t.name}</span>
+                    <span>{money(t.uah)}</span>
                   </li>
                 ))}
               </ul>
