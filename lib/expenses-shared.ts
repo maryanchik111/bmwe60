@@ -19,7 +19,17 @@ export type Expense = {
   at: number;
 };
 
-export type ExpensesData = { items: Expense[]; rates: Rates };
+export type Payment = {
+  id: string;
+  from: Person;
+  to: Person;
+  amount: number;
+  currency: Currency;
+  amountUah: number;
+  at: number;
+};
+
+export type ExpensesData = { items: Expense[]; payments: Payment[]; rates: Rates };
 
 export function toUah(amount: number, currency: Currency, rates: Rates) {
   return currency === "UAH" ? amount : amount * rates[currency];

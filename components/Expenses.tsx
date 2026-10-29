@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft, ArrowRight, Bed, Car, Crown, Gamepad2, ShoppingBag, Trash2, Utensils, Wallet, Plus, Shapes,
+  ArrowLeft, ArrowRight, Bed, Check, Car, Crown, Gamepad2, ShoppingBag, Trash2, Utensils, Wallet, Plus, Shapes,
 } from "lucide-react";
 import {
   CATEGORIES, CURRENCIES, PEOPLE, fromUah, toUah,
@@ -39,8 +39,12 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [payFrom, setPayFrom] = useState<Person>(PEOPLE[0]);
+  const [payTo, setPayTo] = useState<Person>(PEOPLE[2]);
+  const [payAmount, setPayAmount] = useState("");
+  const [payCurrency, setPayCurrency] = useState<Currency>("UAH");
 
-  const { items, rates } = data;
+  const { items, payments, rates } = data;
   const money = (uah: number, cur: Currency = view) => {
     const v = fromUah(uah, cur, rates);
     const s = v.toLocaleString("uk-UA", { maximumFractionDigits: cur === "UAH" ? 0 : 2 });
@@ -68,25 +72,35 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
     }
     const timeline = [...days.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-14);
     const share = total / PEOPLE.length;
-    // кожен платник окремо: решта винна йому по 1/N від його витрат (без взаємозаліку)
+    // кожен платник окремо: решта винна йому по 1/N від його витрат (без взаємозаліку), мінус вже повернуте
+    const paidSum = (from: Person, to: Person) =>
+      payments.filter((x) => x.from === from && x.to === to).reduce((s, x) => s + x.amountUah, 0);
     const owed = byPerson
       .filter((p) => p.uah > 0)
       .sort((a, b) => b.uah - a.uah)
-      .map((p) => ({ payer: p.name, spent: p.uah, each: p.uah / PEOPLE.length, debtors: PEOPLE.filter((n) => n !== p.name) }));
+      .map((p) => ({
+        payer: p.name,
+        spent: p.uah,
+        each: p.uah / PEOPLE.length,
+        debtors: PEOPLE.filter((n) => n !== p.name).map((d) => {
+          const paid = paidSum(d, p.name);
+          return { name: d, paid, left: p.uah / PEOPLE.length - paid };
+        }),
+      }));
     const totalOwed = PEOPLE.map((n) => ({
       name: n,
-      uah: owed.filter((o) => o.payer !== n).reduce((s, o) => s + o.each, 0),
+      uah: owed.filter((o) => o.payer !== n).reduce((s, o) => s + Math.max(0, o.debtors.find((d) => d.name === n)!.left), 0),
     }));
     return { total, byPerson, byCat, timeline, share, owed, totalOwed };
-  }, [items]);
+  }, [items, payments]);
 
   const top = stats.byPerson.reduce((a, b) => (b.uah > a.uah ? b : a), stats.byPerson[0]);
 
-  async function call(init?: RequestInit, qs = "") {
+  async function call(init?: RequestInit, qs = "", path = "expenses") {
     setError("");
     setBusy(true);
     try {
-      const res = await fetch(`/api/expenses${qs}`, init);
+      const res = await fetch(`/api/${path}${qs}`, init);
       const j = await res.json();
       if (!res.ok) throw new Error(j.error);
       setData(j);
@@ -111,6 +125,30 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
       setAmount("");
       setNote("");
     }
+  }
+
+  async function addPay() {
+    const n = Number(payAmount.replace(",", "."));
+    if (!(n > 0)) return setError("Введи суму повернення");
+    if (payFrom === payTo) return setError("Виберіть різних людей");
+    const ok = await call(
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: payFrom, to: payTo, amount: n, currency: payCurrency }),
+      },
+      "",
+      "payments"
+    );
+    if (ok) setPayAmount("");
+  }
+
+  function prefill(from: Person, to: Person, leftUah: number) {
+    setPayFrom(from);
+    setPayTo(to);
+    setPayCurrency("UAH");
+    setPayAmount(String(Math.max(0, Math.round(leftUah))));
+    document.getElementById("pay")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   const preview = Number(amount.replace(",", "."));
@@ -268,20 +306,40 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
                       <span style={{ color: COLORS[o.payer] }}>{o.payer}</span>
                       <span className="text-sm font-semibold text-ink/50">витратив {money(o.spent)}</span>
                     </div>
-                    <ul className="mt-2 space-y-1.5">
+                    <ul className="mt-2 space-y-2">
                       {o.debtors.map((d) => (
-                        <li key={d} className="flex items-center gap-2 font-bold">
-                          <span style={{ color: COLORS[d] }}>{d}</span>
-                          <ArrowRight size={14} className="text-ink/30" />
-                          <span className="text-ink/50">{o.payer}</span>
-                          <span className="ml-auto font-extrabold">{money(o.each)}</span>
+                        <li key={d.name} className="font-bold">
+                          <div className="flex items-center gap-2">
+                            <span style={{ color: COLORS[d.name] }}>{d.name}</span>
+                            <ArrowRight size={14} className="text-ink/30" />
+                            <span className="text-ink/50">{o.payer}</span>
+                            {d.left > 1 ? (
+                              <span className="ml-auto font-extrabold">{money(d.left)}</span>
+                            ) : (
+                              <span className="ml-auto flex items-center gap-1 font-extrabold text-emerald-600">
+                                <Check size={16} /> {d.left < -1 ? `переплата ${money(-d.left)}` : "віддав"}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex items-center justify-between text-xs font-semibold text-ink/40">
+                            <span>
+                              з {money(o.each)}
+                              {d.paid > 0 && ` · вже віддав ${money(d.paid)}`}
+                            </span>
+                            {d.left > 1 && (
+                              <button onClick={() => prefill(d.name, o.payer, d.left)}
+                                className="rounded-full bg-white px-3 py-1 text-xs font-bold text-brand hover:bg-brand hover:text-white">
+                                Віддав
+                              </button>
+                            )}
+                          </div>
                         </li>
                       ))}
                     </ul>
                   </div>
                 ))}
               </div>
-              <h3 className="mt-6 text-lg font-black tracking-tight">Скільки кожен винен всього</h3>
+              <h3 className="mt-6 text-lg font-black tracking-tight">Скільки кожен ще винен</h3>
               <ul className="mt-3 space-y-2">
                 {stats.totalOwed.map((t) => (
                   <li key={t.name} className="flex items-center justify-between rounded-2xl bg-paper px-4 py-2.5 font-bold">
@@ -290,6 +348,62 @@ export default function Expenses({ initial }: { initial: ExpensesData }) {
                   </li>
                 ))}
               </ul>
+
+              <div id="pay" className="mt-6 rounded-2xl bg-paper p-4">
+                <h3 className="text-lg font-black tracking-tight">Записати повернення</h3>
+                <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <select className={field} value={payFrom} onChange={(e) => setPayFrom(e.target.value as Person)}>
+                    {PEOPLE.map((n) => <option key={n}>{n}</option>)}
+                  </select>
+                  <ArrowRight size={18} className="text-ink/40" />
+                  <select className={field} value={payTo} onChange={(e) => setPayTo(e.target.value as Person)}>
+                    {PEOPLE.map((n) => <option key={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <input className={field} inputMode="decimal" placeholder="Скільки віддав" value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)} />
+                  <div className="flex rounded-2xl bg-white p-1">
+                    {CURRENCIES.map((c) => (
+                      <button key={c} onClick={() => setPayCurrency(c)}
+                        className={`flex-1 rounded-xl px-4 font-bold transition ${payCurrency === c ? "bg-ink text-white" : "text-ink/50"}`}>
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button disabled={busy} onClick={addPay}
+                  className="mt-3 w-full rounded-full bg-brand py-3 font-bold text-white shadow-[0_4px_0_0_#12318f] transition active:translate-y-1 active:shadow-none disabled:opacity-50">
+                  {busy ? "…" : "Записати"}
+                </button>
+              </div>
+
+              {payments.length > 0 && (
+                <>
+                  <h3 className="mt-6 text-lg font-black tracking-tight">Історія повернень</h3>
+                  <ul className="mt-3 space-y-2">
+                    {payments.map((x) => (
+                      <li key={x.id} className="flex items-center gap-2 rounded-2xl bg-paper px-4 py-2.5 font-bold">
+                        <span style={{ color: COLORS[x.from] }}>{x.from}</span>
+                        <ArrowRight size={14} className="text-ink/30" />
+                        <span style={{ color: COLORS[x.to] }}>{x.to}</span>
+                        <span className="ml-auto text-right">
+                          {x.amount.toLocaleString("uk-UA")} {SYMBOL[x.currency]}
+                          <span className="block text-xs font-medium text-ink/40">
+                            {new Date(x.at).toLocaleDateString("uk-UA", { day: "numeric", month: "short" })}
+                            {x.currency !== "UAH" && ` · ≈ ${Math.round(x.amountUah)} ₴`}
+                          </span>
+                        </span>
+                        <button aria-label="Видалити" disabled={busy}
+                          onClick={() => confirm("Видалити це повернення?") && call({ method: "DELETE" }, `?id=${x.id}`, "payments")}
+                          className="rounded-full p-2 text-ink/30 transition hover:bg-white hover:text-red-500">
+                          <Trash2 size={16} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </section>
 
             <section className={card}>
